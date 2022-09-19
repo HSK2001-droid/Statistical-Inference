@@ -1,100 +1,85 @@
 ---
-title: "Statistical Inference Course Project- Exponential Distribution and Central Limit Theorem"
+title: "Analysing ToothGrowth Dataset"
 author: "Hizban Sheik"
 date: '2022-09-19'
 output: pdf_document
 ---
 
-## Synopsis
-The Aim of this work is to investigate the exponential distribution and compare it with **Central Limit Theorem** to see if it follows the theorem or not.
+# Exploratory Data Analysis
 
-## Simulation for Sampling Distriution of Exponential Distribution
+Lets see Average Length Growth for each supp
 
-```{r,fig.align="center",fig.cap="Density Plot for Distribution of Sample Means",fig.height=3}
-nsim <- 1000
-sample.dist <- vector(length=nsim)
-nsamples <- 40
-lambda <- 0.2
-true.mean <- 1/lambda
-true.variance <- (1/lambda)^2
-variance <- vector(length=nsim)
-for (i in 1:nsim){
-  
-  sample <- rexp(nsamples,rate=lambda)
-  sample.dist[i] <- mean(sample)
-  variance[i] <- var(sample)
-}
+```{r,figalign='center',fig.cap="Mean of the Teeth Growth Length for each type",fig.height=3.5,fig.width=4}
 library(ggplot2)
-sample.mean <- mean(sample.dist)
-variance.mean <- mean(variance)
-data <- data.frame(x=sample.dist)
-g <- ggplot(data, aes(x = x)) + geom_histogram(binwidth=.3, colour = "black", 
-                                               aes(y = ..density..)) 
-g <- g + geom_vline(xintercept=true.mean,color='red',size=2) + 
-geom_vline(xintercept=sample.mean,color='blue',size=2) +
-ggtitle("Distribution of Sample Means") + 
-theme(plot.title = element_text(hjust = 0.5))
+toothgrowth <- ToothGrowth
+mean.len <- with(toothgrowth,tapply(len, supp, mean))
+type <- c("OJ","VC")
+avg.data <- data.frame(avg=mean.len,type=type)
+g <- ggplot(avg.data,aes(x=type,y=avg)) + geom_bar(aes(fill=type),stat = 'identity') + 
+ylab("Average Length Grown")+ geom_text(aes(label=avg), position=
+position_dodge(width=0.9), vjust=-0.25) + ggtitle("Average Growth of Tooth Length for each supp")
 g
 ```
 
-Blue Vertical Line shows the mean of the sample distribution and red line is the true mean of the exponential distribution i.e 1/lambda.The Sample Mean is a statistic trying to estimate true mean of distribution.The **Central Limit Theorem states that if you have a population with mean mu and standard deviation sigma and take sufficiently large random samples from the population with replacement , then the distribution of the sample means will be approximately normally distributed and its mean will be equal to true mean of distribution**.From above simulation plot this theory is confirmed as the mean of sample means is almost equal to true mean.
+So,Average Length of Tooth Growth is higher for supp "OJ" than "VC". 
+\newpage
+
+```{r,fig.align='center',fig.height=5.5,fig.width=6}
+ggplot(ToothGrowth,aes(x=supp,y=len)) + geom_boxplot(aes(fill=supp)) + facet_grid(.~dose) + 
+  ggtitle("Boxplot for Toothgrowth with dose ")
+```
+So the Box Plot shows that as concentration of dose increases Tooth Growth also increases.This is visible for both "OJ" and "VC".For the case of "VC" there is significant improvement from dosage of 1 to 2, while that is not the case for "OJ".
+
+# Hypothesis Testing
+There are two features in this dataset on which Hypothesis Testing can be performed:
+1) Hypothesis Test on "supp" i.e supplement type
+2) Hypothesis Test on the "dose"
+
+## Hypothesis Test on "supp"
+
+Let our Null Hypothesis be that there is no difference in toothgrowth due to supplement type. 
+
+**Null Hypothesis:** Toothgrowth due to "OJ" = Toothgrowth due to "VC" 
+
+**Alternative Hypothesis:** Toothgrowth due to "OJ" > Toothgrowth due to "VC"
 ```{r}
-print(paste0("The True Mean is ",true.mean))
-print(paste0("The Mean of Sample Means is ",sample.mean))
+oj.data <- subset(ToothGrowth,supp=="OJ")
+vc.data <- subset(ToothGrowth,supp=="VC")
+t.test(x=oj.data$len,y=vc.data$len,alternative='greater',var.equal=FALSE,paired=FALSE)
 ```
-\newpage
-## Variance of samples and theoretical variance
+So, the p-value is 0.03 which is less than alpha=0.05 (Type I error rate) so we reject the null hypothesis.This means that supplement type "OJ" gives better Toothgrowth than the supplement type "VC".
+## Hypothesis Test on Dosage
+**Null Hypothesis:** Toothgrowth does not change with the concentration of dose
 
-```{r,fig.cap="Plot for variances of every sample",fig.align='center',fig.height=3}
-sample.number = (1:length(variance))
-variance.data <- data.frame(var=variance,sample.number=sample.number)
-ggplot(data=variance.data) + geom_line(aes(y=var,x=sample.number)) + geom_hline(yintercept=(1/lambda)^2,color='red',size=2) +
-ggtitle("Variance of every sample")
-```
+**Alternative Hypothesis:** Toothgrowth due to "OJ" > Toothgrowth increases with concentration of dose
 
-Above Plot, shows the variances of all the thousand samples and red line is the theoretical variance of the distribution
 ```{r}
-print(paste0("The True Variance is ",true.variance))
-print(paste0("The Mean of Sample Variances is ",variance.mean))
+dose1 <- subset(ToothGrowth,dose=="0.5")
+dose2 <- subset(ToothGrowth,dose=="1")
+dose3 <- subset(ToothGrowth,dose=="2")
 ```
 
-```{r,fig.cap='Density Plot for Variance of the samples',fig.align='center',fig.height=3.7}
-plot.data <- data.frame(x=variance)
-g <- ggplot(plot.data, aes(x = x)) + geom_histogram(binwidth=3, 
-  colour = "black", aes(y = ..density..)) 
-g <- g + geom_vline(xintercept=(1/lambda)^2,color='red',size=2) + geom_vline(xintercept=variance.mean,color='blue',size=2) + 
-ggtitle("Distribution of Sample Variance") +
-theme(plot.title = element_text(hjust = 0.5))
-g
+**First for dose of 0.5mg and 1mg**
+```{r}
+t.test(x=dose1$len,y=dose2$len,alternative="less",paired=FALSE,var.equal=FALSE)
 ```
-\newpage
-Blue Line Represents the Mean of Sample Variances and Red Line represents the True Variance of the distribution.
-As for mean sample means was estimating true mean of distribution for variance the sample variance will estimate the true variance of distribution.
-So again the mean of sample variances is almost equal to true variance of the distribution so Central Limit Theorem is again correct in this case as well
+So p-value is 6.342e-08 which is very less than alpha=0.05 so we reject the null hypothesis,this means that Toothgrowth for dose of 0.5mg is less than Toothgrowth for dose of 1mg. 
 
-## Comparing Normal Distribution and Sampling Distribution of Mean 
-```{r,,fig.align='center',fig.cap="Desnity Plot for Exponential Distribution",fig.height=2.98}
-exp.dist <- rexp(nsim,rate=lambda)
-exp.dist.data <- data.frame(x=exp.dist)
-ggplot(exp.dist.data, aes(x = x)) + geom_histogram(binwidth=2, colour = "black", 
-aes(y = ..density..)) + ggtitle("Exponential Distribution") + 
-theme(plot.title = element_text(hjust = 0.5))
+**First for dose of 1mg and 2mg**
+```{r}
+t.test(x=dose2$len,y=dose3$len,alternative="less",paired=FALSE,var.equal=FALSE)
 ```
+The p-value is 9.532e-06 again it is very less than alpha=0.05 so we reject the null hypothesis,this means Toothgrowth for dose of 1mg is less than Toothgrowth for 2mg.
 
+# Assumptions
+1)Variance between supplement types and dose is not equal. 
 
-\newpage
-```{r,fig.align='center',fig.cap='Distribution of Sample Means',fig.height=3}
-g <- ggplot(data, aes(x = x)) + geom_histogram(binwidth=.3, colour = "black",
-aes(y = ..density..)) 
-g <- g + stat_function(fun=dnorm,args=list(mean=5,sd=5/(nsamples)^0.5),size=2)+ 
-ggtitle("Comparing Normal Distribution to Distribution of sample means") + 
-theme(plot.title = element_text(hjust = 0.5))
-g
-```
-\newpage
-The Distribution of Sample Means is obtained by sampling samples of size = 40 from the exponential distribution and taking averages of them.Central Limit Theorem states that the distribution of sample mean is normal with mean = population mean and Standard Deviation = Standard Error of Mean. 
+2)The Data is non-paired i.e experiments are done on different subjects for each supp and dose. 
 
+3)The variables are independent and identically distributed.
 
+# Conclusions
 
-The above plot compares the normal distribution and sample mean distribution and it clearly visible that sample mean distribution is approximately normal,also if we increase the sample size then it will fit even better.
+1)Supplement type "OJ" gives more Toothgrowth than the supplement type "VC". 
 
+2)Toothgrowth increases as the concentation or power od dosage increases. 
